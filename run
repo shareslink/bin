@@ -1,0 +1,41 @@
+#!/bin/sh
+spd=`pwd`
+cd ~/ins
+pwd
+mee=$0
+tmc=
+
+if [ $# = 0 ]; then
+    tmc=apache-tomcat-www
+else
+    tmc=`basename $1`
+    echo "YOU ARE TO RESTART $tmc"
+fi
+
+if [ -e $tmc/bin/startup.sh ]; then
+    echo "TARGET TOMCAT DIR SET TO $tmc"
+else
+    echo "PLEASE SHOW ME THE TOMCAT DIR"
+    echo "e.g. run apache-tomcat-www"
+    exit
+fi
+
+echo ">> TRY TO SHUTDOWN $tmc"
+$tmc/bin/shutdown.sh
+ps aux | grep $tmc | grep -v grep | grep -v '/bin/run' | head -n 1 | awk '{print $2}' | while read ip; do echo "kill -9 $ip"; kill -9 $ip; done;
+echo
+echo ">> TRY TO STARTUP $tmc"
+sleep 3
+
+if [ -d $tmc ]; then
+    rm -frv $tmc/logs/*
+fi
+$tmc/bin/startup.sh
+
+ps aux | grep $tmc | grep -v grep | grep -v $mee | awk '{print $1"\t"$2"\t"$12}'
+
+
+
+
+cd $spd
+

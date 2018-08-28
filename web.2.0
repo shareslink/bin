@@ -1,0 +1,253 @@
+#!/bin/bash
+################################################################################
+# help
+################################################################################
+help() {
+    echo
+    echo "NAME"
+    echo "    web(1.0)"
+    echo
+    echo "SYNOPSIS"
+    echo "    web [ha|x y z]"
+    echo
+    echo "DESCRIPTION"
+    echo "    run apache web application according to ini/webrc file"
+    echo
+    echo "OPTIONS"
+    echo "    -h show this help info"
+    echo
+
+}
+
+if [ ! -d ~/ins ]; then
+    echo "~/ins is not existing, exit."
+    exit
+fi
+
+wks="./"
+
+if [ -f ~/.spd ]; then
+    wks=`cat ~/.spd`
+fi
+
+
+# relation between tomcat and war
+ini=~/ini/ama.web
+
+# project name
+com=com
+oke=no
+if [ "$1" = "ama" ]; then
+    ini=~/ini/ama.web
+    com=ama
+    oke=yes
+    shift
+fi
+if [ "$1" = "ema" ]; then
+    ini=~/ini/ema.web
+    com=ema
+    oke=yes
+    shift
+fi
+if [ "$1" = "www" ]; then
+    ini=~/ini/www.web
+    com=www
+    oke=yes
+    shift
+fi
+
+if [ "$oke" = "no" ]; then
+    echo please enter the right args
+    echo
+    help
+    exit
+fi
+
+# set $wks with conf in ~/ini/$com.dub
+if [ ! -f ~/ini/$com.dub ]; then
+    echo "~/ini/$com.dub is not existing, please config it to set the wks first!"
+    echo "e.g.: wks=~/wks/svc.sharesdoc.com"
+    exit
+fi
+
+echo "source ~/ini/$com.dub"
+source ~/ini/$com.dub
+
+# check wks
+echo -n "wks=$wks [Y|n]"
+read cmd
+if [ "$cmd" = "" || "$cmd" = "Y" || "$cmd" = "y" ];then
+    echo
+else
+    echo please set workspace first! with cmd spd or set it in ~ini/$com.dub
+    exit
+fi
+
+# get compile type
+if [ ! -f $wks/.com ]; then
+    echo "you did not run com command, please deploy by yourself without web"
+    echo "before you use web, you should run com to compile your projects!!!"
+    echo "so, this shell could get the compilation-type: dev, tst, pre, pro."
+    exit
+fi
+compile=
+grep production $wks/.com
+if [ $? = 0 ]; then
+    compile=pro
+else
+    grep betatest $wks/.com
+    if [ $? = 0 ]; then
+        compile=tst
+    else
+        grep develop $wks/.com
+        if [ $? = 0 ]; then
+            compile=dev
+        else
+            grep preduction $wks/.com
+            if [ $? = 0 ]; then
+                compile=pre
+            fi
+        fi
+    fi
+fi
+
+ins=~/ins/$com/$compile/web
+mkdir -p $ins
+################################################################################
+# change working dir to $ins
+################################################################################
+cd $ins
+pwd
+################################################################################
+
+webrc=$ini
+rc=~/.webrc
+if [ -f $rc ]; then
+    webrc=
+else
+    rc=
+fi
+
+if [ ! -f $webrc ]; then
+    webrc=
+fi
+
+nam=
+war=
+idx=
+
+
+################################################################################
+# show configurations and choose index
+################################################################################
+choose() {
+    all={`cat $webrc $rc | grep -v "^#" | awk '{print $1}'`}
+    N=${#all[@]}
+    if [ $N -lt 1 ]; then
+        echo "no configuration in $webrc $rc. exit"
+        exit
+    fi
+
+    # show choice
+    echo "Please choose:"
+    cat $webrc $rc | grep -v "^#" | awk '{print " "FNR")\t"$1"\t"$2}'
+    echo -n "select index: "
+    read idx
+    if [ "$idx" = "E" ] || [ "$idx" = "e" ]; then
+        exit
+    fi
+
+    if [ "$idx" = "" ]; then
+        idx=1
+    fi
+
+    cfg=`cat $webrc $rc | grep -v "^#" | head -n$idx | tail -n1`
+    nam=`echo $cfg | awk '{print $1}'`
+    war=`echo $cfg | awk '{print $2}'`
+}
+################################################################################
+# run web app
+################################################################################
+run_web_app() {
+    line
+    mee=$0
+    tmc=$nam
+    if [ ! -d $tmc ]; then
+        err "$tmc notexist"
+        return
+    fi
+
+    if [ -e $tmc/bin/startup.sh ]; then
+        echo "$tmc existing"
+    else
+        err "$tmc notexist"
+        return
+    fi
+
+    exe $tmc/bin/shutdown.sh > /dev/null 2>&1
+    ps aux | grep $tmc | grep -v grep | grep -v $mee | head -n 1 | awk '{print $2}' | while read ip; do
+        inf "$tmc shutdown $ip"
+        kill -9 $ip;
+    done;
+
+    sleep 3
+
+    rm -fr $tmc/logs/*
+    rm -fr $tmc/webapps/ROOT*
+    rm -fr $tmc/work/Catalina/localhost/ROOT*
+    if [ -f $wks/$war ]; then
+        cp $wks/$war $tmc/webapps/ROOT.war
+    else
+        err "$wks/$war notexist"
+        return
+    fi
+
+    exe $tmc/bin/startup.sh > /dev/null 2>&1
+
+    pot=`ps aux | grep $tmc | grep -v grep | grep -v $mee | awk '{print $2}'`
+    inf "$tmc start-up $pot"
+}
+################################################################################
+# main
+################################################################################
+while getopts "ha" arg
+do
+    case $arg in
+        h)
+            help
+            exit
+            ;;
+        a)
+            cat $webrc $rc | grep -v "^#" | while read line; do
+                nam=`echo $line | awk '{print $1}'`
+                war=`echo $line | awk '{print $2}'`
+                run_web_app
+            done
+            echo
+            exit
+            ;;
+    esac
+done
+
+# make sure $1 is index now
+shift $((OPTIND-1))
+
+if [ $# = 0 ]; then
+    choose
+    run_web_app
+fi
+
+for i in $@; do
+    expr $i + 0 > /dev/null 2>&1
+    if [ $? = 0 ]; then
+        # $i is a number
+        idx=$i
+        cfg=`cat $webrc $rc | grep -v "^#" | head -n$idx | tail -n1`
+        nam=`echo $cfg | awk '{print $1}'`
+        war=`echo $cfg | awk '{print $2}'`
+        run_web_app
+    fi
+done
+echo
+exit
+

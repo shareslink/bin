@@ -1,0 +1,14 @@
+#!/bin/sh
+# checkout all git repo
+if [ $# = 0 ]; then
+    echo "coa git_commit_id_or_tag"
+    exit
+fi
+
+wks=`pwd`;
+find . -name .git | while read i; do 
+    line
+    cd "$wks/`dirname $i`"
+    exe pwd
+    exe git checkout $1
+done;

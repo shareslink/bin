@@ -1,0 +1,77 @@
+#!/bin/bash
+if [ $# -lt 2 ]; then
+    echo "NAME"
+    echo "    sync two files/folders. the same file will be ignored."
+    echo "    e.g."
+    echo "        $0 ./wks /mnt/usb/wks"
+    echo "        will sync all the new/modified files from ./wks to /mnt/usb/wks" 
+    echo "        all files under ./wks will be copied into /mnt/usb/wks without "
+    echo "        copying the same file (same shasum)"
+    echo
+    echo "SYNOPSIS"
+    echo "    $0 <from> <to>"
+    echo
+    exit
+fi
+
+log=~/.snc.log
+echo "" > $log
+
+# sync file
+if [ -f "$1" ]; then
+    sha=`shasum "$1" | awk '{print $1}'`
+
+    if [ -f "$2" ]; then
+        sum=`shasum "$2" | awk '{print $1}'`
+
+        if [ $sha == $sum ]; then
+            echo "same: $1 -> $2" | tee -a $log
+        else
+            echo "sync: $1 -> $2" | tee -a $log
+            cp "$1" "$2"
+        fi
+    else
+        echo "sync: $1 -> $2" | tee -a $log
+        cp "$1" "$2"
+    fi
+fi
+
+# sync folder
+if [ -f "$2" ]; then
+    echo "info: $2: invalid parameter. a folder is expected" | tee -a $log
+    exit
+fi
+
+if [ ! -d "$2" ]; then
+    mkdir -p "$2"
+fi
+
+
+find "$1" | while read i; do
+    ii="$2/${i#$1}"
+
+    if [ -d "$i" ]; then
+        if [ ! -d "$ii" ]; then
+            mkdir -p "$ii"
+        fi
+    else
+        sha=`shasum "$i" | awk '{print $1}'`
+
+        if [ -f "$ii" ]; then
+            sum=`shasum "$ii" | awk '{print $1}'`
+
+            if [ $sha == $sum ]; then
+                echo "same: $i -> $ii" | tee -a $log
+            else
+                echo "sync: $i -> $ii" | tee -a $log
+                cp "$i" "$ii"
+            fi
+        else
+            echo "sync: $i -> $ii" | tee -a $log
+            cp "$i" "$ii"
+        fi
+    fi
+done
+
+echo "Done! pls refer to $log for details"
+echo

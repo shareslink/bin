@@ -1,0 +1,19 @@
+#!/bin/sh
+if [ $# -lt 3 ]; then
+    echo replace xxx zzz html
+    exit
+fi
+
+files=`find . -name *.$3`
+
+for file in $files; do
+    grep -Hn "$1" "$file"
+    if [ $? = 0 ]; then
+        inf "replace $1 to $2: $file"
+        exe sed -i .replace "s/$1/$2/g" $file
+        rm $file.replace
+        echo
+    fi
+done
+
+

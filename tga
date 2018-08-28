@@ -1,0 +1,151 @@
+#!/bin/sh
+help() {
+    echo
+    echo "NAME"
+    echo "    tga(1.0)"
+    echo
+    echo "SYNOPSIS"
+    echo "    tga [ -h | -a | -v version | -c commit-id | -d | -m comments | -p ]"
+    echo
+    echo "DESCRIPTION"
+    echo "    git tag all project under current dir."
+    echo
+    echo "OPTIONS"
+    echo "    -h show this help info"
+    echo "    -a add git tag"
+    echo "    -v new tag version"
+    echo "    -c commit id"
+    echo "    -d delete git tag"
+    echo "    -m comments"
+    echo "    -p push tag to repository"
+    echo "    -l list existing tag"
+    echo
+    echo "e.g. tga -a -v vvv -m mmm"
+    echo "e.g. tga -a -v vvv -m mmm -p"
+    echo "e.g. tga -a -v vvv -c ccc"
+    echo "e.g. tga -a -v vvv -c ccc -p"
+    echo "e.g. tga -d -v vvv"
+    echo
+    echo "Johnson Z. @ www.shareslink.com"
+    echo "2016/10/07 01:54"
+    exit
+}
+
+if [ $# = 0 ]; then
+    help
+fi
+
+add=
+ver=
+cid=
+del=
+com=
+psh=
+
+a=
+v=
+c=
+d=
+m=
+p=
+while getopts "hav:c:dm:pl" arg
+do
+    case $arg in
+        h)
+            help
+            ;;
+        a)
+            a=1
+            add=1
+            del=0
+            ;;
+        v)
+            v=1
+            ver=$OPTARG
+            ;;
+        c)
+            c=1
+            cid=$OPTARG
+            ;;
+        d)
+            d=1
+            add=0
+            del=1
+            ;;
+        m)
+            m=1
+            com=$OPTARG
+            ;;
+        p)
+            p=1
+            ;;
+        l)
+            wks=`pwd`;
+            find . -name .git | while read i; do
+                line
+                cd "$wks/`dirname $i`"
+                pwd
+                exe git tag
+            done;
+            exit
+            ;;
+    esac
+done
+
+# make sure $1 is index now
+shift $((OPTIND-1))
+
+
+if [ $a ] && [ $d ]; then
+    help
+fi
+
+if [ ! $a ] && [ ! $d ]; then
+    help
+fi
+
+if [ $a ]; then
+    if [ $v ]; then
+        if [ ! $m ] && [ ! $c ]; then
+            help
+        fi
+    else
+        help
+    fi
+fi
+
+
+if [ $d ]; then
+    if [ ! $v ]; then
+        help
+    fi
+fi
+
+
+gittag() {
+    pwd
+    if [ $add = 1 ]; then
+        if [ $m ]; then
+            exe git tag -a "$ver" -m "$com"
+        else
+            exe git tag -a "$ver" $cid
+        fi
+
+        if [ $p ]; then
+            exe git push origin $ver
+        fi
+    else
+        exe git tag -d $ver
+    fi
+
+    exe git tag
+}
+
+wks=`pwd`;
+find . -name .git | while read i; do
+    line
+    cd "$wks/`dirname $i`"
+    gittag
+done;
+
+

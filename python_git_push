@@ -1,0 +1,14 @@
+#!/usr/bin/python
+import os,sys,pexpect,string
+try:
+    print "git push"
+    egg = pexpect.spawn("git push")
+    egg.expect("Username for 'https://github.com':")
+    egg.sendline("JohnsonElizee")
+    egg.expect("Password for 'https://JohnsonElizee@github.com':")
+    egg.sendline("asdf123.")
+    egg.interact()
+    print "done!"
+except:
+    print "exception! connection close()"
+

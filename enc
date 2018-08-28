@@ -1,0 +1,88 @@
+#!/bin/bash
+if [ $# = 0 ]; then
+	echo enc input output password
+	echo enc input output
+	echo enc input
+	exit
+fi
+
+arg=$1
+if [ ! -f "$arg" ]; then
+    echo "please make sure input file is existing"
+    exit
+fi
+
+sfx=${arg:0-3}
+nam=${arg%.*}
+if [ $# = 1 ]; then
+    if [ "$sfx" = "enc" ]; then
+        echo "*.enc file is not supported"
+        exit
+    fi
+
+    if [ "$sfx" = "dec" ]; then
+        if [ -f $nam.enc ]; then
+            echo -n "$nam.enc is existing, replace? [Y|n]"
+            read cmd
+            if [ "$cmd" = "n" ]; then
+                exit
+            fi
+        fi
+
+        echo -n "Enter password: "
+        read psw
+        if [ "$psw" = "" ]; then
+            echo "please enter valid password, not empty one"
+            exit
+        fi
+        openssl enc -e -des -a -salt -in $1 -out $nam.enc -k $psw
+    else
+        if [ -f $nam.enc ]; then
+            echo -n "$nam.enc is existing, replace? [Y|n]"
+            read cmd
+            if [ "$cmd" = "n" ]; then
+                exit
+            fi
+        fi
+
+        echo -n "Enter password: "
+        read psw
+        if [ "$psw" = "" ]; then
+            echo "please enter valid password, not empty one"
+            exit
+        fi
+        openssl enc -e -des -a -salt -in $1 -out $nam.enc -k $psw
+        exit
+    fi
+
+fi
+
+password=
+if [ $# = 2 ]; then
+    if [ -f "$2" ]; then
+        echo "please make sure output file is NOT existing"
+        exit
+    fi
+
+    echo -n "Enter password: "
+    read psw
+        if [ "$psw" = "" ]; then
+            echo "please enter valid password, not empty one"
+            exit
+        fi
+    openssl enc -e -des -a -salt -in $1 -out $2 -k $psw
+    exit
+fi
+
+if [ $# = 3 ]; then
+    if [ -f "$2" ]; then
+        echo "please make sure output file is NOT existing"
+        exit
+    fi
+
+    openssl enc -e -des -a -salt -in $1 -out $2 -k $3
+    exit
+fi
+# openssl enc -e -des -a -salt -in HttpsUtil.java -out HttpsUtil.java.enc
+# openssl enc -d -des -a -salt -in HttpsUtil.java.enc -out HttpsUtil.java.dec
+

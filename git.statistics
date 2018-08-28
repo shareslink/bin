@@ -1,0 +1,142 @@
+#!/bin/bash
+all_logs=~/.git.statistics.all.logs
+all_name=~/.git.statistics.all.name
+all_line=~/.git.statistics.all.line
+all_temp=~/.git.statistics.all.temp
+mon=$1
+rm -f $all_logs $all_name $all_line $all_temp
+
+declare -i cnt=0
+wks=`pwd`;
+
+find . -name .git | while read g; do
+    cnt=$cnt+1
+    line
+    cd "$wks/`dirname $g`"
+    if [ $cnt -lt 10 ]; then
+        inf "project 0$cnt: `pwd`"
+    else
+        inf "project $cnt: `pwd`"
+    fi
+
+    echo "" > $all_logs
+    # git log | grep "^commit\|Author" | while read i; do read j; echo "$i $j"; done | awk '{print $4" "$2}' | sort > $all_logs
+    git log --pretty=format:'%cn:%h:%cd' --date='format:%Y%m%d' | sort > $all_logs
+    cat $all_logs | awk -F':' '{print $1}' | sort -u | awk '{print $1}' >> $all_name
+    cat $all_name | sort -u > $all_name.tmp
+    cat $all_name.tmp > $all_name
+    rm -f $all_name.tmp
+    cat $all_name | while read n; do
+        if [ "$mon" = "" ]; then
+            grep $n $all_logs | awk -F':' '{print $2}' | while read id; do 
+                git show $id >> $all_line.$n
+            done
+        else
+            grep $n $all_logs | grep $mon | awk -F':' '{print $2}' | while read id; do 
+                git show $id >> $all_line.$n
+            done
+        fi
+    done
+
+    for n in `cat $all_name`; do rm -f $all_temp.$n; done; rm -f $all_temp
+
+    cat $all_name | while read n; do
+        if [ "$mon" = "" ]; then
+            grep $n $all_logs | awk -F':' '{print $2}' | while read id; do 
+                git show $id >> $all_temp.$n
+            done
+        else
+            grep $n $all_logs | grep $mon | awk -F':' '{print $2}' | while read id; do 
+                git show $id >> $all_temp.$n
+            done
+        fi
+        if [ -f $all_temp.$n ]; then
+            cat $all_temp.$n | grep ^+ | grep -v "^+++" > $all_line; printf "%20s 增加 %6s\n" $n `cat $all_line | wc | awk '{print $1}'` >> $all_temp
+        fi
+    done
+    if [ -f $all_temp ]; then
+        cat $all_temp | sort -k 3
+    fi
+
+    for n in `cat $all_name`; do rm -f $all_temp.$n; done; rm -f $all_temp
+
+    cat $all_name | while read n; do
+        if [ "$mon" = "" ]; then
+            grep $n $all_logs | awk -F':' '{print $2}' | while read id; do 
+                git show $id >> $all_temp.$n
+            done
+        else
+            grep $n $all_logs | grep $mon | awk -F':' '{print $2}' | while read id; do 
+                git show $id >> $all_temp.$n
+            done
+        fi
+        if [ -f $all_temp.$n ]; then
+            cat $all_temp.$n | grep ^- | grep -v "^---" > $all_line; printf "%20s 删除 %6s\n" $n `cat $all_line | wc | awk '{print $1}'` >> $all_temp
+        fi
+    done
+    if [ -f $all_temp ]; then
+        cat $all_temp | sort -k 3
+    fi
+
+    for n in `cat $all_name`; do rm -f $all_temp.$n; done; rm -f $all_temp
+done
+
+echo
+echo
+line
+err "STATISTICS INFO FOR ALL GIT PROJECTS $mon"
+line
+rm -f $all_temp
+for n in `cat $all_name`; do
+    if [ -f $all_line.$n ]; then
+        cat $all_line.$n | grep ^+ | grep -v "^+++" > $all_line; printf "%20s 增加 %6s\n" $n `cat $all_line | wc | awk '{print $1}'` >> $all_temp
+    fi
+done
+    if [ -f $all_temp ]; then
+        cat $all_temp | sort -k 3
+    fi
+
+rm -f $all_temp
+for n in `cat $all_name`; do
+    if [ -f $all_line.$n ]; then
+        cat $all_line.$n | grep ^- | grep -v "^---" > $all_line; printf "%20s 删除 %6s\n" $n `cat $all_line | wc | awk '{print $1}'` >> $all_temp
+    fi
+done
+    if [ -f $all_temp ]; then
+        cat $all_temp | sort -k 3
+    fi
+
+for n in `cat $all_name`; do
+    rm -f $all_line.$n
+done
+
+
+rm -f $all_logs $all_name $all_line $all_temp
+
+
+
+
+java=~/.git.statistic.java
+html=~/.git.statistic.html
+js=~/.git.statistic.js
+
+
+echo "" > $java
+echo "" > $html
+echo "" > $js
+
+line
+err "LINE NUMBER STATISTICS FOR ALL FILES $mon"
+line
+find . -name *.java | while read i; do cat $i >> $java; done;
+echo -n "Java Line Number: "
+cat $java | wc | awk '{print $1}'
+
+find . -name *.html | while read i; do cat $i >> $html; done;
+echo -n "Html Line Number: "
+cat $html | wc | awk '{print $1}'
+
+find . -name *.js | while read i; do cat $i >> $js; done;
+echo -n "Js Line Number: "
+cat $js | wc | awk '{print $1}'
+

@@ -1,0 +1,14 @@
+#!/bin/bash
+slt=
+echo "key without input: a5842680671fb2589191f1587c512b4678f18bcf"
+echo -n "Please enter salt for your key:"
+read slt
+
+if [ -f ~/.encrc ]; then
+    echo `cat ~/.encrc`$slt@$@ | shasum | rev | shasum
+else
+    echo "$slt@$@"
+    echo "$slt@$@" | shasum | rev | shasum
+fi
+
+

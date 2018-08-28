@@ -1,0 +1,43 @@
+#!/bin/bash
+# GREP SOMETHING IN THE SPECIFIED FILES BY ZENGQIANGSHENG 00182775
+if [ "$#" -eq "0" ]; then
+    echo "Usage: z key [file-list | suffix]"
+    exit
+fi
+
+if [ "$#" -eq "1" ]; then
+    files=`find . | grep -v "\.git$" | grep -v "\.git/" | grep -v "\.svn/" | grep -v "\.svn$" | grep -v "\.class$" | grep -v "\.war$" | grep -v "\.jar$" | grep -v ".idea/"`
+    for file in $files
+    do
+        if [ ! -d $file ]
+        then
+            if [ -f $file ]
+            then
+                grep -Hn --color=auto "$1" "$file"
+            fi
+        fi
+    done
+else
+    args=("$@")
+    declare -i i=1
+    while [ "$i" -lt  "$#" ]; do
+        arg=${args[$i]}
+        if [ -f "${arg}" ]; then
+            # if it's a file, just use all the file names in it.
+            cat $arg | xargs grep -Hn --color=auto "$1"
+        else
+            # if it's a suffix, we need to find all files
+            files=`find . | grep "\.$arg$" | grep -v "\.git$" | grep -v "\.git/" | grep -v "\.svn$" | grep -v "\.svn/" | grep -v "\.class$" | grep -v "\.war$" | grep -v "\.jar$" | grep -v ".idea/"`
+            for file in $files
+            do
+                if [ ! -d $file ]
+                then
+                    grep -Hn --color=auto "$1" "$file"
+                fi
+            done
+        fi
+
+        i=$i+1
+    done
+fi
+

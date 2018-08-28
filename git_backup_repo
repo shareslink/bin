@@ -1,0 +1,105 @@
+#!/bin/bash
+
+ip=
+if [ $# -lt 1 ]; then
+    if [ -f ~/.git_backup_repo ]; then
+        ip=`cat ~/.git_backup_repo`
+        echo "$0 $ip"
+    else
+        echo "$0 <git-server-ip>"
+        exit
+    fi
+else
+    ip=$1
+fi
+
+if [ -d /home/git/repositories ]; then
+    alias dir=dir
+    names=`dir /home/git/repositories`
+    for i in $names; do
+        echo "---------------------------------------------------------------------------"
+        pwd
+        if [ -d ${i/%.git/} ]; then
+            echo "$i is existing"
+        else
+            echo "$i is NOT existing"
+            echo "git clone ssh://git@$ip/$i ${i/%.git/}"
+            git clone ssh://git@$ip/$i ${i/%.git/}
+        fi
+
+        if [ -d ${i/%.git/} ]; then
+            cd ${i/%.git/}
+            OK=$?
+
+            pwd
+            git checkout .
+            git status | grep 'nothing to commit'
+            KO=$?
+
+            if [ $OK == 0 ]; then
+                cd ..
+            fi
+
+            if [ $KO == 1 ]; then
+                rm -fr ${i/%.git/}
+                echo "it's dirty, try to reclone it"
+                echo "git clone ssh://git@$ip/$i ${i/%.git/}"
+                git clone ssh://git@$ip/$i ${i/%.git/}
+            fi
+
+        fi
+    done
+
+
+    dirs=`dir`
+    for d in $dirs
+    do
+        if [ -d $d/.git ];
+        then
+            echo "---------------------------------------------------------------------------"
+            cd $d
+            OK=$?
+            pwd
+            rm -fr ./*
+            git checkout .
+            echo "git pull origin master"
+            git pull origin master
+            pwd
+            rm -fr ./*
+
+            if [ $OK == 0 ]; then
+                cd ..
+            fi
+        fi
+    done
+
+
+
+    rm backup.git.projects.*
+    tar cvf backup.git.projects.`date +%Y%m%d_%H_%M_%S`.tar *
+
+
+
+    dirs=`dir`
+    for d in $dirs
+    do
+        if [ -d $d/.git ];
+        then
+            cd $d
+            OK=$?
+
+            echo "git checkout . -> $d"
+            git checkout .
+
+            if [ $OK == 0 ]; then
+                cd ..
+            fi
+        fi
+    done
+
+
+
+    ls -lh
+else
+    echo "/home/git/repositories is not existing"
+fi

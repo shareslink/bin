@@ -1,0 +1,19 @@
+#!/bin/bash
+declare -i cnt=0
+wks=`pwd`;
+find . -name .git | while read i; do 
+    cnt=$cnt+1
+    line
+    cd "$wks/`dirname $i`"
+    if [ $cnt -lt 10 ]; then
+        inf "project 0$cnt: `pwd`"
+    else
+        inf "project $cnt: `pwd`"
+    fi
+    git log | head -n 1
+    git status
+done;
+
+
+
+

@@ -1,0 +1,68 @@
+#!/bin/bash
+
+if [ $# -lt 1 ]; then
+    echo "$0 <git-server-ip>"
+    exit
+fi
+
+ip=$1
+if [ -d /home/git/repositories ]; then
+    alias dir=dir
+    names=`dir /home/git/repositories`
+    for i in $names; do
+        if [ -d ${i/%.git/} ]; then
+            echo "$i is existing"
+        else
+            echo "git clone ssh://git@$ip/$i"
+            git clone ssh://git@$ip/$i
+        fi
+    done
+
+
+
+    dirs=`dir`
+    for d in $dirs
+    do
+        if [ -d $d/.git ];
+        then
+            echo "-----------------------------------------------------------------"
+            echo "cd $d"
+            cd $d
+            echo "rm -fr ./*"
+            rm -fr ./*
+            echo "git checkout ."
+            git checkout .
+            echo "git pull origin master"
+            git pull origin master
+            pwd
+            echo "rm -fr ./*"
+            rm -fr ./*
+            cd ..
+        fi
+    done
+
+
+
+    rm backup.git.projects.*
+    tar cvf backup.git.projects.`date +%Y%m%d_%H_%M_%S`.tar *
+
+
+
+    dirs=`dir`
+    for d in $dirs
+    do
+        if [ -d $d/.git ];
+        then
+            cd $d
+            echo "git checkout . -> $d"
+            git checkout .
+            cd ..
+        fi
+    done
+
+
+
+    ls -lh
+else
+    echo "/home/git/repositories is not existing"
+fi

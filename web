@@ -1,0 +1,238 @@
+#!/bin/bash
+################################################################################
+# help
+################################################################################
+help() {
+    echo
+    echo "NAME"
+    echo "    web - install web war into tomcat"
+    echo
+    echo "SYNOPSIS"
+    echo "    web [PROJECT] [ah]"
+    echo
+    echo "DESCRIPTION"
+    echo "    install web war into tomcat with config file ~/ini/[PROJECT].web or ~/.webrc."
+    echo "PROJECT"
+    echo "    ama"
+    echo "    ema"
+    echo "    www"
+    echo
+    echo "OPTIONS"
+    echo "    -a install all war in web config file"
+    echo "    -h show this help info"
+    echo
+
+}
+
+if [ ! -d ~/ins ]; then
+    echo "~/ins is not existing, exit."
+    exit
+fi
+
+wks=./
+if [ -f ~/.spd ]; then
+    wks=`cat ~/.spd`
+fi
+msg "wks=$wks"
+
+
+com=com
+if [ $# = 0 ]; then
+    help
+    exit
+fi
+
+com=$1
+ini=~/ini/$com.web
+oke=no
+if [ "$1" = "ama" ]; then
+    oke=yes
+    shift
+fi
+if [ "$1" = "ema" ]; then
+    oke=yes
+    shift
+fi
+if [ "$1" = "www" ]; then
+    oke=yes
+    shift
+fi
+
+if [ "$oke" = "no" ]; then
+    echo "please enter right option for project: ama, ema, www"
+    exit
+fi
+
+# get compile type
+if [ ! -f $wks/.com ]; then
+    echo "$wks/.com is not existing, please deploy by yourself without web"
+    echo "before you use web, you should run com to compile your projects!!!"
+    exit
+fi
+compile=
+grep production $wks/.com
+if [ $? = 0 ]; then
+    compile=pro
+else
+    grep betatest $wks/.com
+    if [ $? = 0 ]; then
+        compile=tst
+    else
+        grep develop $wks/.com
+        if [ $? = 0 ]; then
+            compile=dev
+        else
+            grep preduction $wks/.com
+            if [ $? = 0 ]; then
+                compile=pre
+            fi
+        fi
+    fi
+fi
+
+msg "compile=$compile"
+
+ins=~/ins/$com/$compile/web
+mkdir -p $ins
+################################################################################
+# change working dir to $ins
+################################################################################
+cd $ins
+msg "ins=`pwd`"
+################################################################################
+
+webrc=$ini # ~/ini/ama.web
+
+# use ~/.webrc instead if it's existing
+if [ -f ~/.webrc ]; then
+    webrc=~/.webrc
+fi
+
+# tomcat name
+nam=
+# war file name
+war=
+# connection port
+prt=
+# choosed index
+idx=
+
+################################################################################
+# show configurations and choose index
+################################################################################
+choose() {
+    all={`cat $webrc | grep -v "^#" | awk '{print $1}'`}
+    N=${#all[@]}
+    if [ $N -lt 1 ]; then
+        echo "no configuration in $webrc. exit"
+        exit
+    fi
+
+    # show choice
+    echo "Please choose:"
+    cat $webrc | grep -v "^#" | awk '{print " "FNR")\t"$1"\t"$2"\t"$3}'
+    echo -n "select index: "
+    read idx
+    if [ "$idx" = "E" ] || [ "$idx" = "e" ]; then
+        exit
+    fi
+
+    if [ "$idx" = "" ]; then
+        idx=1
+    fi
+
+    cfg=`cat $webrc | grep -v "^#" | head -n$idx | tail -n1`
+    nam=`echo $cfg | awk '{print $1}'` # tomcat name
+    war=`echo $cfg | awk '{print $2}'` # war file name
+    prt=`echo $cfg | awk '{print $3}'` # connection port
+    msg "select index: $idx"
+}
+################################################################################
+# run web app
+################################################################################
+run_web_app() {
+    line
+    mee=$0 # ~/bin/web
+    tmc=$nam
+
+    if [ "$prt" = "" ]; then
+        echo "no connection port is set to $tmc"
+        echo "please set it in ~/ini/$com.web or ~/.webrc first!"
+        exit
+    fi
+
+    if [ ! -d $tmc ]; then
+        msg "newtmc $ins/$tmc $prt"
+        newtmc "$ins/$tmc" $prt
+    fi
+
+    exe $tmc/bin/shutdown.sh > /dev/null 2>&1
+    ps aux | grep $tmc | grep -v grep | grep -v $mee | head -n 1 | awk '{print $2}' | while read ip; do
+        inf "$tmc shutdown $ip"
+        kill -9 $ip;
+    done;
+
+    sleep 2
+
+    rm -fr $tmc/logs/*
+    rm -fr $tmc/webapps/ROOT*
+    rm -fr $tmc/work/Catalina/localhost/ROOT*
+    if [ -f $wks/$war ]; then
+        cp $wks/$war $tmc/webapps/ROOT.war
+    else
+        err "$ins/$tmc notexist"
+        return
+    fi
+
+    echo -n "startup ... "
+    exe $tmc/bin/startup.sh > /dev/null 2>&1
+
+    pid=`ps aux | grep $tmc | grep -v grep | grep -v $mee | awk '{print $2}'`
+    inf "$ins/$tmc:$prt start-up $pid"
+    msg success
+}
+################################################################################
+# main
+################################################################################
+while getopts "ha" arg
+do
+    case $arg in
+        h)
+            help
+            exit
+            ;;
+        a)
+            cat $webrc | grep -v "^#" | while read line; do
+                nam=`echo $line | awk '{print $1}'`
+                war=`echo $line | awk '{print $2}'`
+                prt=`echo $line | awk '{print $3}'`
+                run_web_app
+            done
+            echo
+            exit
+            ;;
+    esac
+done
+
+# make sure $1 is index now
+shift $((OPTIND-1))
+
+if [ $# = 0 ]; then
+    choose
+    run_web_app
+fi
+
+for i in $@; do
+    expr $i + 0 > /dev/null 2>&1
+    if [ $? = 0 ]; then
+        # $i is a number
+        idx=$i
+        cfg=`cat $webrc | grep -v "^#" | head -n$idx | tail -n1`
+        nam=`echo $cfg | awk '{print $1}'`
+        war=`echo $cfg | awk '{print $2}'`
+        run_web_app
+    fi
+done
+echo
+exit
+

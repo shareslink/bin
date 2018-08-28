@@ -1,0 +1,32 @@
+#!/bin/bash
+
+if [ ! "$#" = "4" ]; then
+	echo "Usage:"
+	echo "      encoding <path> <from-code> <to-code> <suffix>"
+	echo
+	echo "      ARG1 path"
+	echo "      ARG2 from-code for iconv"
+	echo "      ARG3 to-code for iconv"
+	echo "      ARG4 suffix of file to be converted"
+	echo
+    exit 1
+fi
+
+path=$1
+from=$2
+to=$3
+suffix=$4
+tmp=~/.encoding.iconv
+
+find $path -name *.$suffix | while read line
+do
+    iconv -f $from -t $to $line > $tmp
+    if [ "$?" = "1" ]; then
+        echo "failed to convert $line"
+    else
+        echo convert $line OK
+        mv $tmp $line
+    fi
+done
+
+

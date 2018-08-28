@@ -1,0 +1,50 @@
+#!/bin/bash
+if [ $# = 0 ]; then
+    echo "NAME"
+    echo "     $0 - install fonts"
+    echo
+    echo "SYNOPSIS"
+    echo "     $0 fontdir"
+    echo "     install all fonts under fontdir. all fonts are copied into "
+    echo "     ~/.fonts"
+    echo
+    exit
+fi
+
+dir=$1
+
+if [ -d $dir ]; then
+    who=`whoami`
+    if [ "$who" = "root" ]; then
+        echo "copy all fonts in \"$dir\" to ~/.fonts"
+        pwd
+        echo "mkdir -p ~/.fonts"
+        mkdir -p ~/.fonts
+
+        echo "cp \"$dir/*\" ~/.fonts/"
+        cp -v "$dir/*" ~/.fonts/
+
+        cd ~/.fonts/
+        pwd
+
+        echo "mkfontscale"
+        mkfontscale
+
+        echo "mkfontdir"
+        mkfontdir
+
+        echo "fc-cache -fv"
+        echo -n "doit? Y/n"
+        read cmd
+
+        fc-cache -fv
+
+        #echo "vi /etc/fonts/language-selector.conf to set system language"
+        #vi /etc/fonts/language-selector.conf
+    else
+        echo "please sudo this shell: sudo bash $0"
+    fi
+else
+    echo "$dir is not a dir"
+    exit
+fi

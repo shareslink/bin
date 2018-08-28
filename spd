@@ -1,0 +1,49 @@
+#!/bin/sh
+# spd
+# set project directory
+# $file is used by com.johnson.tools.launcher to open current working project directory
+
+file=~/.com.johnson.tools.launcher.project.dir
+
+touch $file
+
+echo "update: $file"
+echo "PROJECT_DIR=`pwd`" > $file
+echo "TIME_STAMP=`date +%Y%m%d%H%M%S`" >> $file
+cat $file
+
+# set cmd x parameter
+# x cmd will bring user to project dir set by spd cmd
+# ~/.alias.x will be read by x to determine where is the current working project dir
+echo "set current pwd into ~/.alias.x"
+echo "`pwd`" > ~/.alias.x
+
+
+# set cscope db path for vim to add proper cscope.out file
+# .CSCOPE_DB will be read by ~/bin/v
+echo "`pwd`" > ~/.spd
+# echo "" >  ~/.CSCOPE_DB
+# 
+# echo CSCOPE_DB=
+# if [ -f cscope.out ]; then
+#     echo "`pwd`/cscope.out" >> ~/.CSCOPE_DB
+#     echo cscope.out
+# fi
+# 
+# if [ -d cscope ]; then
+#     outs=`find cscope | grep out$`
+#     for out in $outs; do
+#         if [ -f $out ]; then
+#             echo "`pwd`/$out" >> ~/.CSCOPE_DB
+#             echo $out
+#         fi
+#     done
+# fi
+# 
+# export CSCOPE_DB=`cat ~/.CSCOPE_DB`
+
+# $HOME/.vim/plugin/cscope_maps.vim will automatically add all cscope.out into vi
+if [ -d cscope ]; then
+    rm -f $HOME/.cscope
+    ln -s "`pwd`/cscope" $HOME/.cscope
+fi

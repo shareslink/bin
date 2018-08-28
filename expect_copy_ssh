@@ -1,0 +1,39 @@
+#!/usr/bin/expect
+if { $argc < 3 } {
+    send_user "Usage: $argv0 frm sip usr pwd dst\n"
+    exit
+}
+
+set timeout -1
+set frm        [lindex $argv 0]
+set sip        [lindex $argv 1]
+set usr        [lindex $argv 2]
+set psw        [lindex $argv 3]
+set dst        [lindex $argv 4]
+set pot        [lindex $argv 5]
+
+spawn scp -P $pot $frm $usr@$sip:$dst
+expect {
+    "(yes/no)?" { send "yes\n"; expect "*assword:" { send "$psw\n"} }
+    "*assword:" { send "$psw\n" }
+}
+expect "100%"
+expect eof
+
+
+
+set timeout 10
+
+spawn ssh -p $pot $usr@$sip
+expect { 
+    "(yes/no)?" { send "yes\n"; exp_continue } 
+    "password:" { send "$psw\n" } 
+} 
+expect "Last login"
+send "alias c='pwd && ls -lh'\n"
+send "alias c.='cd .. && c'\n"
+send "alias e='clear && pwd'\n"
+send "alias E=exit\n"
+send "c\n"
+interact 
+

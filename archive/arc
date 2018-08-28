@@ -1,0 +1,36 @@
+#!/bin/bash
+if [ $# -lt 2 ]; then
+    echo "$0 <output.[rar|tar|tgz|zip]> <input...>"
+    exit
+fi
+
+out=$1
+
+len=${#out}
+if [ $len -lt 4 ]; then
+    echo "$out is not a valid output archive. e.g. x.tar, x.zip, x.rar, x.tgz, x.zip"
+    exit
+fi
+
+((bin = $len - 3))
+suffix=${out:$bin:3}
+
+if [ $suffix == rar ]; then
+    echo "rar a $@"
+    rar a $@
+fi
+
+if [ $suffix == tar ]; then
+    echo "tar cvf $@"
+    tar cvf $@
+fi
+
+if [ $suffix == tgz ]; then
+    echo "tar czvf $@"
+    tar czvf $@
+fi
+
+if [ $suffix == zip ]; then
+    echo "zip -r $@"
+    zip -r  $@
+fi

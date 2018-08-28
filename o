@@ -1,0 +1,17 @@
+#!/bin/bash
+os=`uname`
+wks=
+if [ $# = 0 ]; then
+	wks=.
+else
+	wks=$1
+fi
+
+if [ $os = 'Darwin' ]; then
+    echo "open $wks"
+	open $wks
+else
+    echo "nautilus $wks"
+	nautilus $wks > /dev/null 2>&1 &
+fi
+

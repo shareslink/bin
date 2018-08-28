@@ -1,0 +1,7 @@
+#!/bin/bash
+if [ $# = 0 ]; then
+	echo "druid_enc username|password"
+	exit
+fi
+
+java -cp ~/bin/lib/druid-1.0.18.jar com.alibaba.druid.filter.config.ConfigTools "$1"

@@ -1,0 +1,168 @@
+#!/bin/bash
+wks=
+suffix=.dir.shareslink
+ini=~/ini/ama.dub
+com=
+
+if [ "$1" = "ama" ]; then
+    ini=~/ini/ama.dub
+    com=ama
+    shift
+fi
+if [ "$1" = "ema" ]; then
+    ini=~/ini/ema.dub
+    com=ema
+    shift
+fi
+
+if [ "$com" = "" ]; then
+    echo "NAME"
+    echo "    dub - install dubbo service and startup it."
+    echo
+    echo "USAGE"
+    echo "    dub [PROJECT] [SERVICE-ID]"
+    echo
+    echo "    install dubbo service according to ~/ini/[PROJECT].dub file."
+    echo "    and we chould choose the service by service id. e.g.:"
+    echo "    the id for 0209.EMAService-assembly.tar.gz is 0209, and we could"
+    echo "    install 0209.EMAService-assembly.tar.gz with cmd: dub ema 0209"
+    echo
+    echo "PROJECT"
+    echo "    ama"
+    echo "    ema"
+    echo
+    echo "SERVICE-ID"
+    echo "    0201, 0209..."
+    echo
+    echo "DEMO"
+    echo "    dub ama - install all ama dubbo services"
+    echo "    dub ema 0209 - install ema service with key words 0209"
+    echo
+    exit
+fi
+
+source $ini
+
+# get compile type
+compile=
+grep production $wks/.com
+if [ $? = 0 ]; then
+    compile=pro
+else
+    grep betatest $wks/.com
+    if [ $? = 0 ]; then
+        compile=tst
+    else
+        grep develop $wks/.com
+        if [ $? = 0 ]; then
+            compile=dev
+        else
+            grep preduction $wks/.com
+            if [ $? = 0 ]; then
+                compile=pre
+            fi
+        fi
+    fi
+fi
+
+
+
+args=($@)
+if [ ${#args[@]} = 0 ]; then
+    echo "kill all existing dubbo service: "
+    ps aux | grep -v grep | grep "$suffix" | awk '{print $2}' | while read i; do echo "kill -9 $i"; kill -9 $i; done
+    echo
+else
+    for arg in $@; do
+        ps aux | grep -v grep | grep "$suffix" | grep $arg | awk '{print $2}' | while read i; do echo "kill -9 $i"; kill -9 $i; done
+    done
+fi
+
+cd $wks
+pwd
+gzs=`find . -name *.gz  | grep Service | sort`
+ins=~/ins/$com/$compile/dub
+if [ ! -d $ins ]; then
+    mkdir -p $ins
+fi
+
+cd $ins
+pwd
+echo "install dubbo service into $ins"
+
+cd $ins
+pwd
+
+alias ls=ls
+
+if [ $# -gt 0 ]; then
+    for arg in $@; do
+        for gz in $gzs; do
+            echo $gz | grep $arg
+            if [ $? = 0 ]; then
+                echo
+                echo
+                info "deploy $wks/$gz"
+                pwd
+                bn=`basename $gz | awk -F- '{print $1}'`$suffix
+                if [ -d "$bn" ]; then
+                     echo "delete $bn"
+                     rm -fr "$bn"
+                fi
+
+                mkdir $bn
+                cd $bn
+                cp $wks/$gz .
+                tar zxf *.gz
+                dn=`basename $gz | awk -F- '{print $1}'`
+
+                echo
+                files=`ls $dn/conf`
+                for i in $files; do
+                    if [ -f "$dn/conf/$i" ]; then
+                        cat "$dn/conf/$i"
+                    fi
+                done
+
+                logdir=`grep dubbo.log4j.file $dn/conf/dubbo.properties | awk -F= '{print $2}'`
+                mkdir -p `dirname ${logdir}` > /dev/null 2>&1
+
+                exe $dn/bin/start.sh
+                cd $ins
+            fi
+        done
+    done
+else
+    for gz in $gzs; do
+            echo
+            echo
+            info "deploy $wks/$gz"
+            pwd
+            bn=`basename $gz | awk -F- '{print $1}'`$suffix
+            if [ -d "$bn" ]; then
+                 echo "delete $bn"
+                 exe rm -fr "$bn"
+            fi
+
+            mkdir $bn
+            cd $bn
+            cp $wks/$gz .
+            tar zxf *.gz
+            dn=`basename $gz | awk -F- '{print $1}'`
+
+            echo
+            files=`ls $dn/conf`
+            for i in $files; do
+                if [ -f "$dn/conf/$i" ]; then
+                    cat "$dn/conf/$i"
+                fi
+            done
+
+            logdir=`grep dubbo.log4j.file $dn/conf/dubbo.properties | awk -F= '{print $2}'`
+            mkdir -p `dirname ${logdir}` > /dev/null 2>&1
+
+            exe $dn/bin/start.sh
+            cd $ins
+    done
+fi
+

@@ -1,0 +1,61 @@
+#!/bin/bash
+if [ $# = 0 ]; then
+	echo dec input output password
+	echo dec input output
+	echo dec input
+	exit
+fi
+
+arg=$1
+sfx=${arg:0-3}
+nam=${arg%.*}
+if [ $# = 1 ]; then
+    if [ "$sfx" = "dec" ]; then
+        echo "*.dec is not supported"
+        exit
+    fi
+
+    if [ $sfx = "enc" ]; then
+        if [ -f $nam ]; then
+            echo -n "$nam is existing, replace? [Y|n]"
+            read cmd
+            if [ "$cmd" = "n" ]; then
+                exit
+            fi
+        fi
+
+        echo -n "Enter password: "
+        read psw
+        openssl enc -d -des -a -salt -in $1 -out $nam -k $psw
+    else
+        if [ -f $nam.dec ]; then
+            echo -n "$nam.dec is existing, replace? [Y|n]"
+            read cmd
+            if [ "$cmd" = "n" ]; then
+                exit
+            fi
+        fi
+
+        echo -n "Enter password: "
+        read psw
+        openssl enc -d -des -a -salt -in $1 -out $nam.dec -k $psw
+        exit
+    fi
+
+fi
+
+password=
+if [ $# = 2 ]; then
+    echo -n "Enter password: "
+    read psw
+    openssl enc -d -des -a -salt -in $1 -out $2 -k $psw
+    exit
+fi
+
+if [ $# = 3 ]; then
+    openssl enc -d -des -a -salt -in $1 -out $2 -k $3
+    exit
+fi
+# openssl enc -e -des -a -salt -in HttpsUtil.java -out HttpsUtil.java.enc
+# openssl enc -d -des -a -salt -in HttpsUtil.java.enc -out HttpsUtil.java.dec
+

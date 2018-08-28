@@ -1,0 +1,35 @@
+#!/bin/sh
+
+if [ -d www.shareslink.com ]; then
+    line
+    err 'www.shareslink.com is existing, exit.'
+    echo
+    exit
+fi
+line
+git clone  ssh://git@src.shareslink.com/www.shareslink.com.git
+
+if [ -e www.shareslink.com ]; then
+    cd www.shareslink.com
+else
+    err 'www.shareslink.com is NOT existing, exit'
+    exit
+fi
+
+pwd
+
+if [ -e 02.ServiceModule ]; then
+    cd 02.ServiceModule
+        line
+        git clone  ssh://git@src.shareslink.com/0209.EMAService.src.git           09.EMAService/src
+    cd ..
+fi
+
+
+if [ -e 03.ApplicationModule ]; then
+    cd 03.ApplicationModule
+        line
+        git clone  ssh://git@src.shareslink.com/0309.ShareslinkEMA.src.git        09.ShareslinkEMA/src
+    cd ..
+fi
+

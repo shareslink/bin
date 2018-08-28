@@ -1,0 +1,36 @@
+#!/bin/sh
+# push all
+if [ $# = 0 ]; then
+    wks=`pwd`;
+    find . -name .git | while read i; do 
+        line
+        cd "$wks/`dirname $i`"
+        exe pwd
+        exe git push
+    done;
+else
+    while getopts "t:h" arg
+    do
+        case $arg in
+            h)
+                echo psa
+                echo     git push origin master
+                echo
+                echo psa -t ver
+                echo     git push origin ver
+                exit
+                ;;
+            t)
+                wks=`pwd`
+                find . -name .git | while read i; do
+                    line
+                    cd "$wks/`dirname $i`"
+                    exe pwd
+                    exe git push origin $OPTARG
+                done;
+                exit
+                ;;
+        esac
+    done
+    shift $((OPTIND-1))
+fi

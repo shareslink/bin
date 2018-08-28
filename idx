@@ -1,0 +1,787 @@
+#!/bin/bash
+# ctags --fields=+afiKlmnsSzt -L $cscopedb/cscope.files -f $cscopedb/tags
+# ignore="( -name .git -o -name test -o -name tests ) -prune -o"
+# type="( -name *.java -o -name *.cpp -o -name *.[ch] -o -name *.xml -o -name *.aidl )"
+# path="xxx yyy zzz"
+# for src in $path; do find -L $src $ignore $type -print
+
+# color on/off? use co cmd to set it on/off.
+co=
+if [ -e ~/.co ]; then
+    co="--color=always"
+else
+    co="--color=auto"
+fi
+
+################################################################################
+# subString(src, bin, end); 
+# return substring position, > 0
+# return 0 for err
+subString() {
+    src=$1
+    bin=$2
+    end=$3
+
+    # cut from 1
+    if [ $bin -lt 1 ]; then 
+        echo ""
+        return 0; 
+    fi
+
+    # check parameters
+    if [ $bin -gt $end ]; then 
+        echo ""
+        return 0; 
+    fi
+
+    # check src length
+    if [ ${#src} = 0 ]; then 
+        echo ""
+        return 0; 
+    fi
+
+    # echo abcd | cut -c 1-3 ==> abc
+    echo "$src" | cut -c $bin-$end
+    return $bin
+}
+
+################################################################################
+# indexOf(src, sub); 
+# return index of sub-string, > 0. 
+# return 0 when failure
+indexOf() {
+    src=$1
+    sub=$2
+    rtv=
+
+    # check src length
+    if [ ${#src} = 0 ]; then return 0; fi
+    if [ ${#sub} = 0 ]; then return 0; fi
+
+    declare -i length=${#src}
+    declare -i i=0
+    subStringLength=${#sub}
+    while [ $i -lt $length ]; do
+        i=$i+1
+        declare -i end=$i+$subStringLength-1
+        rtv=`subString "$src" "$i" "$end"`
+
+        # subString error
+        if [ $? -eq 0 ]; then 
+            return 0; 
+        fi
+
+        if [ "$sub" = "$rtv" ]; then
+            # i > 0
+            return $i
+        fi
+    done
+
+    return 0
+}
+
+# contains(src, sub); 
+# return 0: not contained
+#      >=1: contained
+contains() {
+    src=$1
+    sub=$2
+
+    # check src length
+    if [ ${#src} = 0 ]; then return 0; fi
+    if [ ${#sub} = 0 ]; then return 1; fi
+
+    indexOf "$src" "$sub"
+
+    return $?
+}
+
+
+
+#-------------------------------------------------------------------------------
+# delete all created files
+#-------------------------------------------------------------------------------
+rm_created_files()
+{
+    return
+}
+
+#-------------------------------------------------------------------------------
+# convert a non-utf-8 file to a utf-8 file
+#-------------------------------------------------------------------------------
+convert_to_utf_file()
+{
+    echo "-u is used to convert non utf-8 file to be a utf-8 file"
+    echo "   this function is depended on the linux cmd: enca"
+    echo -n "What kind of file you want to convert: "
+    read suffix
+    files=`find . -name *.$suffix`
+    for i in $files;
+    do
+        if [ -f $i ]; then
+            echo "convert $i"
+            enca -L zh_CN -x utf-8 $i
+        fi
+    done
+}
+
+#-------------------------------------------------------------------------------
+# show help message
+#-------------------------------------------------------------------------------
+echo_help_msg()
+{
+    echo
+    echo "NAME"
+    echo "    idx(4.7)"
+    echo 
+    echo "SYNOPSIS"
+    echo "    idx [OPTIONS]"
+    echo
+    echo "DESCRIPTION"
+    echo "    idx is used to generate ctags, cscope and ctags index files. "
+    echo "    especially, idx could generate SourceInsight file list for     "
+    echo "    source analysis and Eclipse link source folder for debugging"
+    echo "    Android framework/apk source code."
+    echo
+    echo "OPTIONS"
+    echo "    -c  generate cscope file.                                   [OK]"
+    echo "    -e  generate eclipse linksources                                "
+    echo "    -f  find desired files for quick reference and index            "
+    echo "    -g  generate global file                                        "
+    echo "    -l  generate filelist for vim lookupfile plugin             [OK]"
+    echo "    -r  delete all generated index files                            "
+    echo "    -s  generate sourceinsight file list                        [OK]"
+    echo "    -t  generate ctags file                                         "
+    echo "    -h  show this help information                              [OK]"
+    echo
+    echo "RELEASE NOTE 4.8"
+    echo "    rewrite function of -s for increasing index operations"
+    echo
+    echo "RELEASE NOTE 4.7"
+    echo "    rewrite implementation code for options: -c, -l and -s"
+    echo
+    echo "RELEASE NOTE 4.6"
+    echo "    idx -l is replaced by idx -e"
+    echo "    add generate_lookupfile_list() method for generating filelist for "
+    echo "    lookupfile plugin. with idx -l, ./cscope/filelist will be generated."
+    echo 
+    echo "RELEASE NOTE 4.5"
+    echo "    rewrite all method in a nice way"
+    echo 
+    echo "RELEASE NOTE 4.4"
+    echo "    to make use of vim+ctags+cscope+global, idx is enhanced. so, we"
+    echo "    could use idx to generate ctags+cscope+global info."
+    echo 
+    echo "RELEASE NOTE 4.3"
+    echo "    for BTLA, add priviledge-filter function. if two or more files "
+    echo "    have the same package and class name, idx will get conflict during "
+    echo "    linking processing. we need to decide which one is needed "
+    echo "    now, idx prompts user to provide priviledge keyword "
+    echo "    for automatically conflict processing. BTLA is bad implementation"
+    echo "    that would introduce class conflict for eclipse ..."
+    echo 
+    echo "RELEASE NOTE 4.2"
+    echo "    hello world, I am idx for android developer."
+    echo 
+    echo "AUTHOR"
+    echo "    Johnson.Z"
+    echo "    Johnson.Z.Email@Gmail.com                                 2012.02.10"
+    echo 
+}
+
+
+#-------------------------------------------------------------------------------
+# filter unnecessary files
+# $1: input file
+# the original input file will be deleted and the result will be saved into 
+# the new file with same file name to input file.
+#-------------------------------------------------------------------------------
+filter_unnecessary_files()
+{
+    # chk input
+    if [ ! -f "$1" ]; then 
+        echo "Err: non-existing file: $1"
+        exit 1; 
+    fi
+
+    ptn=".idx.ptn"
+    echo "/cts/"          >> $ptn
+    echo "/demo/"         >> $ptn
+    echo "/docs/"         >> $ptn
+    echo "/demos/"        >> $ptn
+    echo "/demokit/"      >> $ptn
+    echo "/example/"      >> $ptn
+    echo "/examples/"     >> $ptn
+    echo "/junit/"        >> $ptn
+    echo "/sample/"       >> $ptn
+    echo "/samples/"      >> $ptn
+    echo "/Samples/"      >> $ptn
+    echo "/test/"         >> $ptn
+    echo "/tests/"        >> $ptn
+    echo "/tools/"        >> $ptn
+    echo "tests"          >> $ptn
+    echo "/testsuite/"    >> $ptn
+    echo "/linksources/"  >> $ptn
+    echo "/QSensorTest/"  >> $ptn
+    echo "_test.c"        >> $ptn
+    echo "/testing/"      >> $ptn
+    echo "/guava-testlib/">> $ptn
+    echo "/jmonkeyengine/">> $ptn
+    echo "_test.cpp"      >> $ptn
+    echo "_test.java"     >> $ptn
+    echo "/gunit/"        >> $ptn
+    echo ".html"          >> $ptn
+    echo "/.git"          >> $ptn
+    echo "/.svn"          >> $ptn
+    echo ".png"           >> $ptn
+    echo ".jpg"           >> $ptn
+    echo "/R.java"        >> $ptn
+    #echo "/out/"          >> $ptn
+
+
+    doit=false
+    if [ "$2" = "with.default.pattern" ]; then
+        doit=true
+    else
+        # show patterns for user to make decision: yes or no
+        cat $ptn | awk '{print "\t"$1}'
+        echo -n "Msg: Filter files with these pattern: [Y/n] "
+        read input
+        if [ "$input" = "" -o "$input" = "y" -o "$input" = "Y" ]; then
+            touch ./cscope/.filter.with.current.patttern
+            doit=true
+        else
+            echo "Msg: Your choice is 'No'"
+            echo "" > $ptn
+            echo -n "Msg: Pattern to be used: "
+            read input
+            if [ ! -z "$input" ]; then
+                for i in "$input"; do
+                    echo $i >> $ptn
+                done
+                doit=true
+            fi
+        fi
+    fi
+
+    if [ $doit = true ]; then
+        a=`cat "$1" | wc | awk -F' ' '{print $1}'`
+        cat "$1" | wc
+        if [ $# -eq 2 ]; then
+            grep -v -f "$ptn" "$1" > "$2"
+            b=`cat "$2" | wc | awk -F' ' '{print $1}'`
+            cat "$2" | wc
+        else
+            # no output specified, use input as output.
+            grep -v -f "$ptn" "$1" > .tmp
+            rm -f "$1"
+            mv .tmp "$1"
+            b=`cat "$1" | wc | awk -F' ' '{print $1}'`
+            cat "$1" | wc
+        fi
+ 
+        echo "Msg: Filtered `expr $a - $b` lines"
+ 
+        rm -f $ptn
+        rm -f $2
+    else
+        echo "Msg: Nothing is filtered"
+    fi
+}
+
+
+#-------------------------------------------------------------------------------
+# generate sourceinsight file list for importing
+#-------------------------------------------------------------------------------
+generate_sourceinsight_file_list()
+{
+    mkdir -p sourceinsight
+    output="sourceinsight/sis.log"
+    find_files "" "" "$output" "-r"
+    cat $output | awk '{print "../"$1}' > .tmp
+    rm -f $output
+    mv .tmp $output
+    filter_unnecessary_files $output "with.default.pattern"
+}
+
+
+#-------------------------------------------------------------------------------
+# generate eclipse link sources
+#-------------------------------------------------------------------------------
+generate_eclipse_link_sources()
+{
+    # if linksources is a file, we can't delete. so, ask user to remove it.
+    if [ -e linksources ] && [ -f linksources ]; then
+        echo "errinf: linksources is used as a file, please move away the file, and try again."
+        exit 1
+    fi
+
+    # create linksources if it's not existing
+    if [ ! -e linksources ]; then
+        mkdir linksources
+    fi
+
+    echo "delete linksources/*"
+    rm -fr linksources/*
+
+    # clear old log file, pwd is needed here
+    log=`pwd`/linksources/linked.log
+    if [ -e $log ]; then
+        rm -f $log
+    fi
+
+    # clear old log file, pwd is needed here
+    ign=`pwd`/linksources/ignore.log
+    if [ -e $ign ]; then
+        rm -f $ign
+    fi
+
+    auto_process_link_conflict="yes"
+    echo -n "auto process link confilct: [Y/n] "
+    read cmd
+    if [ "$cmd" = "n" ]; then
+        auto_process_link_conflict="no"
+    fi
+
+    # used to record how many file are linked
+    declare -i account=0
+
+    output="linksources/java.log"
+    rm -f $output
+    default_dirs="frameworks packages libcore"
+    echo -n "Please input folders to be linked: [$default_dirs] "
+    read input
+    if [ -z "$input" ]; then
+        input=$default_dirs
+    fi
+
+    find_files "java" "$input" "$output"
+
+    if [ -e $output ]; then
+        filter_unnecessary_files $output
+    else
+        echo "errinf: $output is not existing. exit"
+        exit 1
+    fi
+
+    # link all the java files into linksources now
+    if [ -e $output ]; then
+        files=`cat $output`
+        for file in $files; do
+            file_name=`basename $file`
+            pkg=`grep "^package" $file`
+            dir=linksources
+
+            # delete "   package   " prefix
+            pkg=`echo $pkg | sed 's/^ *package *//g'`
+            # delete as little as possible from end: delete ";" char.
+            pkg=${pkg%%;*} # we also could use tr cmd. tr -d ';'
+
+            pkg=${pkg//.//}
+            # with -p, no error msg
+            if [ "$pkg" != "" ]; then
+                dir="linksources/$pkg"
+            fi
+            mkdir -p $dir
+
+            # bcz we add folder, so we need to add ../../ for link parameter
+            # we also could use sed 's/ \+/\n/g'
+            declare -i depth=`echo "$pkg" | tr -s '/' '\n' | wc -l`
+            refer="../"
+            # pkg='' will lead to incorrect ../../ string
+            if [ "$pkg" != "" ]; then 
+                for ((i=0; i<$depth; i++)); do
+                    refer=$refer../
+                done
+            fi
+
+            pushd $dir > /dev/null 2>&1
+            # under current dir, the file is existing.
+            if [ -e $file_name ]; then 
+                if [ $auto_process_link_conflict = "yes" ]; then
+                    relink="yes"
+
+                    # do the relink if it's needed
+                    if [ $relink = "yes" ]; then
+                        rm $file_name
+                        ln -s $refer$file .
+                        echo "relink: $file"
+                        echo "relink: $file to $dir/$file_name" >> $log
+                    else
+                        echo "ignore: $file" >> $ign
+                    fi
+                else
+                    # manually process the confliction
+                    echo `grep $co "/$file_name" $log`
+                    echo -n "relink: $file: [y/N] "
+                    read cmd
+                    if [ "$cmd" = "y" ]; then
+                        rm -f $file_name
+                        ln -s $refer$file .
+                        echo "relink: $file"
+                        echo "relink: $file to $dir/$file_name" >> $log
+                    fi
+                fi
+            else
+                ln -s $refer$file .
+                echo "linked: $file"
+                echo "linked: $file to $dir/$file_name" >> $log
+                account=$account+1
+            fi
+            popd > /dev/null 2>&1
+        done
+    else
+        echo "no java file found with your choice"
+    fi 
+
+    echo "linked: $account files!"
+    echo "Game Over!"
+    return
+}
+
+
+#-------------------------------------------------------------------------------
+# find files for index
+# $1: file suffixs
+# $2: folders to be searched
+# $3: output, this function does not delete existing output file and >> is used.
+# $4: option, -r, find relative path; -a, find absolute path
+#-------------------------------------------------------------------------------
+find_files()
+{
+    # set default parameters
+    default_suffixs="java"
+    default_folders="frameworks packages system external libcore"
+    default_output="idx.log"
+    defautl_option="-r"
+    suffixs=""
+    folders=""
+    output=""
+    option=""
+
+    # set parameters according to $@
+    ary=( $@ )
+    for ((i=0; i<=$#; i++)); do
+        if [ $i -eq 1 ]; then
+            suffixs=$1
+        elif [ $i -eq 2 ]; then
+            folders=$2
+        elif [ $i -eq 3 ]; then
+            output=$3
+        elif [ $i -eq 4 ]; then
+            option=$4
+        fi
+    done
+
+    # if suffix is not set, we have to set it.
+    if [ -z "$suffixs" ]; then
+        # verify suffix
+        echo -n "Files to be found (e.g. java, c, cpp, h, xml, mk): [$default_suffixs] "
+        read input
+        if [ -z "$input" ]; then
+            suffixs=$default_suffixs
+        else
+            suffixs=$input
+        fi
+    fi
+
+    # if folder is not set, we have to set it.
+    if [ -z "$folders" ]; then
+        # verify folder
+        echo -n "Folders to be searched: [$default_folders] "
+        read input
+        if [ -z "$input" ]; then
+            folders=$default_folders
+        else
+            folders=$input
+        fi
+    fi
+
+    # if output is not set, we have to set it.
+    if [ -z "$output" ]; then
+        # verify output
+        echo -n "Output file name: [$default_output] "
+        read input
+        if [ -z "$input" ]; then
+            output=$default_output
+        else
+            output=$input
+        fi
+    fi
+
+    # if option is not set, we have to set it.
+    if [ -z "$option" ]; then
+        # verify option
+        echo -n "Option to be used (-r relative, -a absolute): [$default_option] "
+        read input
+        if [ -z "$input" ]; then
+            option=$default_option
+        else
+            option=$input
+        fi
+    fi
+
+    # check suffix
+    for suffix in $suffixs; do
+        contains "java c cpp h xml mk " "$suffix "
+        # >= 1: contains; 
+        # 0   : no
+        if [ ! $? ]; then 
+            echo "Errinf: $suffix is not a valid suffix. exit"
+            exit 1
+        fi
+    done
+
+    # check folder
+    for folder in $folders; do
+        if [ ! -d $folder ]; then
+            echo "Errinf: $folder is not a valid folder. exit"
+            exit 1
+        fi
+    done
+
+    # check output
+    if [ -d $output ]; then
+        echo "Errinf: $output is a existing directory. exit"
+        exit 1
+    fi
+
+
+    echo -n "Unrecoverable action is on, [Enter] to continue, [Ctrl+C] to cancel: "
+    read input
+    if [ -f $output ]; then
+        echo "Delete existing $output"
+        rm -f $output
+    fi
+
+    # exe cmd on each folder
+    for folder in $folders; do
+        for suffix in $suffixs; do
+            echo -n "Cmd: find $folder -name *.$suffix >> $output ... "
+            find $folder -name "*.$suffix" >> $output
+            echo "OK"
+        done
+    done
+
+    # clean it
+    filter_unnecessary_files $output "with.default.pattern"
+}
+
+
+#-------------------------------------------------------------------------------
+# create cscope/filelist for lookupfile vim plugin
+#-------------------------------------------------------------------------------
+generate_lookupfile_list()
+{
+    echo "Msg: Create index for lookupfile vim plugin."
+
+    mkdir -p ./cscope
+    filelist="./cscope/filelist"
+
+    folders=""
+    # for android project, set the default folders to be searched
+    names="bionic bootable dalvik device external frameworks hardware libcore packages system out"
+    names="external frameworks libcore packages system"
+    for name in $names; do
+        if [ -d $name ]; then 
+            folders="$name $folders"; 
+        else
+            echo "Msg: Ingnore non-existing folder: $name"
+        fi
+    done
+
+    # confirm folder
+    echo; dir $co
+    if [ "$folders" = "" ]; then
+        folders=.
+    fi
+
+    echo -n "Msg: Folder to be searched: [$folders] "
+    read input
+    if [ ! "$input" = "" ]; then folders=$input; fi
+
+    cwd=`pwd`
+    # add this line for vim lookupfile plugin to reuse our file list
+    echo -e "!_TAG_FILE_SORTED\t2\t/2=foldcase/" > $filelist
+    for folder in $folders; do
+        if [ -d $folder ]; then
+            echo "Cmd: find $folder -type f -printf %f\t${cwd}/%p\t1\n"
+            find $folder -type f -printf "%f\t${cwd}/%p\t1\n" >> $filelist
+        else
+            echo "Msg: Ignore non-existing folder: $folder"
+        fi
+    done
+}
+
+
+#-------------------------------------------------------------------------------
+# create cscope.files
+#-------------------------------------------------------------------------------
+generate_cscope_index_file()
+{
+    output=cscope
+    ################
+    # check output
+    ################
+    # if a file, not a dir, is conflicted with output dir ...
+    if [ -f $output ]; then
+        echo "Err: a file ./cscope is existing. idx can't use it as output folder."
+        return
+    fi
+    # if output dir is not existing, mk it.
+    mkdir -p $output
+
+    ################
+    # suffix
+    ################
+    # default suffixes to be used
+    suffixs="java c cpp h"
+    # load saved status. replace default ones.
+    if [ -e "$output/.suffixs" ]; then suffixs=`cat "$output/.suffixs"`; fi
+    # confirm suffix
+    echo -n "Msg: File type to be searched: [$suffixs] "
+    read input
+    if [ ! "$input" = "" ]; then suffixs="$input"; fi
+    # save status
+    echo "$suffixs" > "$output/.suffixs"
+
+
+    ################
+    # target folder
+    ################
+    # default dir to be used is ./
+    folders=""
+    # for android project, set the default folders to be searched
+    names="frameworks packages"
+    for name in $names; do
+        if [ -d $name ]; then 
+            folders="$name $folders"; 
+        else
+            echo "Msg: Ingnore non-existing folder: $name"
+        fi
+    done
+    if [ -z "$folders" ]; then folders="./"; fi
+    # load saved status. replace default ones.
+    if [ -e "$output/.folders" ]; then folders=`cat "$output/.folders"`; fi
+    # confirm folder
+    echo; dir $co
+    echo -n "Msg: Folder to be searched: [$folders] "
+    read input
+    if [ ! "$input" = "" ]; then folders=$input; fi
+    # save status
+    echo "$folders" > "$output/.folders"
+
+    ###############
+    # absolute dir
+    ###############
+    # if we wanna use cscope with spd cmd, we need to generate absolute path
+    absolute="y"
+
+    # confirm path type
+    echo -n "Msg: Generate absolute path info: [Y/n] "
+    read input
+    if [ ! "$input" = "" ]; then absolute=$input; fi
+
+
+    ################## exe cmd on each folder ################################
+    # add " in wks for awk to print it out
+    wks="\"`pwd`/\""
+    for folder in $folders; do
+        # ignore non-existing folder
+        if [ ! -d $folder ]; then
+            echo "Msg: Ignore non-existing folder: $folder"
+            continue
+        fi
+
+        path="$output/$folder"
+        rm -fr $path
+        mkdir -p "$path"
+
+        files="$path/cscope.files" 
+        out="$path/cscope.out"
+
+        #>>>>>>>>>>>>>>>>> exe cmd for each suffix >>>>>>>>>>>>>>>>>>>>>>>>>>>>
+        for suffix in $suffixs; do
+            echo "Cmd: find $folder -name '*.$suffix' -type f"
+            if [ "$absolute" = "y" -o "$absolute" = "Y" ]; then
+                find $folder -name "*.$suffix" -type f | awk "{print ${wks}\$1}" >> $files
+            else
+                find $folder -name "*.$suffix" -type f >> $files
+            fi
+        done
+        #<<<<<<<<<<<<<<<<< exe cmd for each suffix <<<<<<<<<<<<<<<<<<<<<<<<<<<<
+
+        filter_unnecessary_files $files "with.default.pattern"
+
+        echo "Cmd: cscope -kbRq -i'$files' -f'$path/cscope.out'"
+        cscope -kbRq -i"$files" -f"$path/cscope.out"
+        #ctags --fields=+afiKlmnsSzt -L $files -f $path/tags
+        echo 
+    done
+
+    # ./cscope/filelist is used by vim lookupfile plugin
+    generate_lookupfile_list
+
+    echo "By Johnson"
+}
+
+process_args()
+{
+    case "$1" in
+        '-c')
+            time generate_cscope_index_file
+            break
+            ;;
+        '-e')
+            time generate_eclipse_link_sources
+            break
+            ;;
+        '-f')
+            # no need to set default parameters
+            time find_files
+            break
+            ;;
+        '-s')
+            time generate_sourceinsight_file_list
+            break
+            ;;
+        '-l')
+            time generate_lookupfile_list
+            break
+            ;;
+        '-r')
+            rm_created_files
+            break
+            ;;
+        '-u')
+            convert_to_utf_file
+            break
+            ;;
+        '-h')
+            echo_help_msg
+            break
+            ;;
+           *)
+            echo "Err: invalid option: $1"
+            echo_help_msg
+            ;;
+    esac
+
+}
+
+
+
+
+#-------------------------------------------------------------------------------
+# execute the cmd
+#-------------------------------------------------------------------------------
+
+if [ $# = 0 ]; then
+    echo_help_msg
+    exit
+else
+    for arg in $@; do
+        process_args $arg
+    done
+fi
+

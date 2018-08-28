@@ -1,0 +1,80 @@
+#!/bin/sh
+
+if [ -d www.shareslink.com ]; then
+    line
+    err 'www.shareslink.com is existing, exit.'
+    echo
+    exit
+fi
+
+if [ $# = 0 ]; then
+    address=src.shareslink.com
+else
+    address=10.171.77.159
+fi
+
+line
+git clone  ssh://git@$address/www.shareslink.com.git
+
+if [ -e www.shareslink.com ]; then
+    cd www.shareslink.com
+else
+    err 'www.shareslink.com is NOT existing, exit'
+    exit
+fi
+
+pwd
+line
+git clone  ssh://git@$address/adr.shareslink.com.git
+line
+git clone  ssh://git@$address/ios.shareslink.com.git
+
+if [ -e 02.ServiceModule ]; then
+    cd 02.ServiceModule
+        line
+        git clone  ssh://git@$address/0201.SDKUserService.src.git       01.SDKUserService/src
+        line
+        git clone  ssh://git@$address/0202.SDKFundingService.src.git    02.SDKFundingService/src
+        line
+        git clone  ssh://git@$address/0203.APPUserService.src.git       03.APPUserService/src
+        line
+        git clone  ssh://git@$address/0204.APPFundingService.src.git    04.APPFundingService/src
+        line
+        git clone  ssh://git@$address/0205.APPAdminService.src.git      05.APPAdminService/src
+        line
+        git clone  ssh://git@$address/0206.PayService.src.git           06.PayService/src
+        line
+        git clone  ssh://git@$address/0207.SecurityService.src.git      07.SecurityService/src
+        line
+        git clone  ssh://git@$address/0208.PayAdmService.src.git        08.PayAdmService/src
+        line
+        git clone  ssh://git@$address/0209.EMAService.src.git           09.EMAService/src
+    cd ..
+fi
+
+
+if [ -e 03.ApplicationModule ]; then
+    cd 03.ApplicationModule
+        line
+        git clone  ssh://git@$address/0301.ShareslinkApp.src.git        01.ShareslinkApp/src
+        line
+        git clone  ssh://git@$address/0302.ShareslinkAdm.src.git        02.ShareslinkAdm/src
+        line
+        git clone  ssh://git@$address/0303.ShareslinkSDK.src.git        03.ShareslinkSDK/src
+        line
+        git clone  ssh://git@$address/0304.ShareslinkMob.src.git        04.ShareslinkMob/src
+        line
+        git clone  ssh://git@$address/0305.ShareslinkCSA.src.git        05.ShareslinkCSA/src
+        line
+        git clone  ssh://git@$address/0306.ShareslinkBSA.src.git        06.ShareslinkBSA/src
+        line
+        git clone  ssh://git@$address/0307.ShareslinkOPN.src.git        07.ShareslinkOPN/src
+        line
+        git clone  ssh://git@$address/0308.ShareslinkPay.src.git        08.ShareslinkPay/src
+        line
+        git clone  ssh://git@$address/0309.ShareslinkEMA.src.git        09.ShareslinkEMA/src
+        line
+        git clone  ssh://git@$address/0310.ShareslinkPMA.src.git        10.ShareslinkPMA/src
+    cd ..
+fi
+

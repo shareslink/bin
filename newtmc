@@ -1,0 +1,47 @@
+#!/bin/bash
+name=`basename $0`
+if [ $# -lt 2 ]; then
+    echo "USAGE"
+    echo "    $name [new-tmc-dir] [new-tmc-port]"
+    echo
+	exit 1
+fi
+
+tmc=~/ins/tmc
+if [ ! -d $tmc ]; then
+    err "$tmc 8080 notexist"
+    echo "please install a brand new tomcat with 8080 and 8005"
+    exit
+fi
+
+new=$1
+con_port=$2
+let svr_port=$con_port+1
+let rdr_port=$con_port+2
+let ajp_port=$con_port+3
+
+port=`grep Connector ${tmc}/conf/server.xml | grep protocol | grep HTTP | awk -F'"' '{print $2}'`
+if [ ! $port = 8080 ]; then
+    err "$tmc connection port is not 8080"
+    echo "please install a brand new tomcat with 8080 and 8005"
+    exit
+fi
+
+port=`grep SHUTDOWN ${tmc}/conf/server.xml | awk -F'"' '{print $2}'`
+if [ ! $port = 8005 ]; then
+    err "$tmc server port is not 8005"
+    echo "please install a brand new tomcat with 8080 and 8005"
+    exit
+fi
+
+dir=`dirname $new`
+mkdir -p $dir
+
+cp -r $tmc $new
+
+sed "s/8005/$svr_port/g" $tmc/conf/server.xml | \
+    sed "s/8080/$con_port/g" | \
+    sed "s/8443/$rdr_port/g" | \
+    sed "s/8009/$ajp_port/g"   \
+    > $new/conf/server.xml
+

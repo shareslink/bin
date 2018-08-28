@@ -1,0 +1,39 @@
+#!/bin/bash
+#
+# Purpose: convert m4a music to mp3 file.
+#
+# Usage: m4a2mp3 *.m4a [-C target_dir]
+# TODO: [-C target_dir]
+# History: Fixed the problem of processing m4a files contain characters.
+#
+# Written by Dooit, dooit.lee@gmail.com
+# Created on Thu Sep  1 10:14:15 HKT 2011
+# Refer to: http://www.scottklarr.com/topic/70/linux-m4a-to-mp3-converter-shell-script/
+#
+
+Usage="Usage: `basename $0` <m4a files> [-C target_dir]"
+
+echo "There are $# m4a file will be proccessed to mp4."
+
+if [ $# -eq 0 ]; then
+	echo $Usage >&2
+fi
+
+# Process target_dir if it has
+target_dir=$PWD
+
+
+# Converting m4a to mp3
+# NOTE: if file name have space characters, we need to process them and then
+#	recover it.
+for m4a_file in `echo $@ | sed -e 's/m4a /m4a:/g' -e 's/:/\n/g' -e 's/ /:/g'`
+do
+	m4a_file=`echo $m4a_file | sed -e 's/:/ /g'`
+	mp3_file="$target_dir/`basename "${m4a_file%.m4a}.mp3"`"
+	echo $m4a_file
+	echo $mp3_file
+	echo "Converting: ${m4a_file%.m4a}.mp3"
+	# faad -q -o - "`echo $m4a_file | sed -e 's/ /\ /g'`" | lame --quiet - "`echo $mp3_file | sed -e 's/ /\ /g'`"
+    ffmpeg -i "`echo $m4a_file | sed -e 's/ /\ /g'`" -acodec libmp3lame -ab 128k "`echo $mp3_file | sed -e 's/ /\ /g'`"
+done
+

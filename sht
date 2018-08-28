@@ -1,0 +1,35 @@
+#!/bin/bash
+if [ $# = 0 ]; then
+	echo "$0 tmc|ftp|apache"
+
+	ps aux | grep -v grep | grep org.apache.catalina.startup.Bootstrap
+	pids=`ps aux | grep -v grep | grep org.apache.catalina.startup.Bootstrap | awk '{print $2}'`
+	for pid in $pids; do
+		echo "kill -9 $pid"
+		kill -9 $pid
+	done
+
+	exit 0
+fi
+
+if [ $1 = tmc ]; then
+	ps aux | grep -v grep | grep org.apache.catalina.startup.Bootstrap
+	pids=`ps aux | grep -v grep | grep org.apache.catalina.startup.Bootstrap | awk '{print $2}'`
+	for pid in $pids; do
+		echo "kill -9 $pid"
+		kill -9 $pid
+	done
+
+fi
+
+if [ $1 = ftp ]; then
+    sudo service vsftpd stop
+fi
+
+if [ $1 = apache ]; then
+    sudo /etc/init.d/apache2 stop
+fi
+
+if [ $1 = mysql ]; then
+    sudo /etc/init.d/mysql stop
+fi

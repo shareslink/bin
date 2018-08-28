@@ -1,0 +1,15 @@
+#!/bin/bash
+if [ $# = 0 ]; then
+    echo rename string sub new
+    exit 1
+fi
+string=$1
+substring=$2
+replacement=$3
+
+name=`basename $string`
+dir=`dirname $string`
+
+newone=$dir"/"${name//$substring/$replacement}
+echo "mv \"$string\" \"$newone\""
+/bin/mv "$string" "$newone"

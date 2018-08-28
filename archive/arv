@@ -1,0 +1,31 @@
+#!/bin/bash
+if [ $# -lt 1 ]; then
+    echo "$0 <input.[rar|tar|tgz]>"
+    exit
+fi
+
+input=$1
+
+len=${#input}
+if [ $len -lt 4 ]; then
+    echo "$input is not a valid input archive. e.g. x.tar, x.zip, x.rar, x.tgz"
+    exit
+fi
+
+((bin = $len - 3))
+suffix=${input:$bin:3}
+
+if [ $suffix == rar ]; then
+    echo "rar l $@"
+    rar l $@
+fi
+
+if [ $suffix == tar ]; then
+    echo "tar tvf $@"
+    tar tvf $@
+fi
+
+if [ $suffix == tgz ]; then
+    echo "tar tvf $@"
+    tar tvf $@
+fi

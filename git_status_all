@@ -1,0 +1,16 @@
+#!/bin/sh
+alias ls=ls
+dirs=`ls`
+for d in $dirs
+do
+	if [ -d $d/.git ];
+	then
+        echo "----------------------------------------------------------------"
+        echo "cd $d"
+		cd $d
+        echo "git status"
+		git status
+		cd ..
+	fi
+done
+

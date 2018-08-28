@@ -1,0 +1,21 @@
+#!/bin/bash
+declare -i cnt=0
+wks=`pwd`;
+line
+err "                PULL ALL GIT REPOSITORIES FOR STATUS"
+line
+find . -name .git | while read i; do 
+    cnt=$cnt+1
+    cd "$wks/`dirname $i`"
+    if [ -d .git ]; then
+        if [ $cnt -lt 10 ]; then
+            inf "project 0$cnt: `pwd`"
+        else
+            inf "project $cnt: `pwd`"
+        fi
+        git pull
+    else
+        inf "ignore invalid git project: `pwd`"
+    fi
+done;
+line

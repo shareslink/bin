@@ -1,0 +1,186 @@
+#!/bin/bash
+rc=~/.conrc
+conrc=~/.con
+touch $rc $conrc
+cfg=
+nam=
+sip=
+usr=
+psw=
+pot=
+# index
+    idx=
+# source file
+    src=
+# destination
+    dst=
+# login
+    log=
+
+################################################################################
+# help
+################################################################################
+help() {
+    echo
+    echo "NAME"
+    echo "    con(1.0)"
+    echo
+    echo "SYNOPSIS"
+    echo "    con [hli:f:d:]"
+    echo
+    echo "DESCRIPTION"
+    echo "    con creates ssh connection to specified server."
+    echo
+    echo "OPTIONS"
+    echo "    -h show this help info"
+    echo "    -l login server after copy file into server"
+    echo "    -i index of server config"
+    echo "    -f file to be copied into server"
+    echo "    -d destination server"
+    echo
+
+}
+################################################################################
+# show configurations and choose index
+################################################################################
+choose() {
+    # .conrc is valid or not
+    if [ ! -f $conrc ] && [ ! -f $rc ]; then
+        echo "$rc and $conrc are not existing. exit"
+        exit
+    fi
+
+    if [ ! -f $rc ]; then
+        rc=
+    fi
+
+    all=(`cat $conrc $rc | awk '{print $1}'`)
+    N=${#all[@]}
+    if [ $N -lt 1 ]; then
+        echo "no configuration in $conrc $rc. exit"
+        exit
+    fi
+
+    # show choice
+    echo "Please choose server:"
+    cat $conrc $rc | awk '{print " "FNR")\t"$1"\t"$2"\t"$3"\t"$4"\t"$5"\t"$6"\t"$7}'
+    echo -n "select index: "
+    read idx
+    if [ "$idx" = "E" ] || [ "$idx" = "e" ]; then
+        exit
+    fi
+
+    if [ "$idx" = "" ]; then
+        echo "set index=1"
+        idx=1
+    fi
+
+    cfg=`cat $conrc $rc | head -n$idx | tail -n1`
+    nam=`echo $cfg | awk '{print $1}'`
+    sip=`echo $cfg | awk '{print $2}'`
+    usr=`echo $cfg | awk '{print $3}'`
+    psw=`echo $cfg | awk '{print $4}'`
+    pot=`echo $cfg | awk '{print $5}'`
+}
+
+
+################################################################################
+# copy and login
+################################################################################
+copy_and_login() {
+    if [ ! -z "$src" ]; then
+        if [ -z "$dst" ]; then
+            if [ "$usr" = "root" ]; then
+                dst="/root/"
+            else
+                dst="/home/$usr/"
+            fi
+        fi
+
+        if [ -z "$log" ]; then
+            echo expect_copy $src $sip $usr $psw $dst $pot
+            read w
+            expect_copy $src $sip $usr $psw$w $dst $pot
+        else 
+            echo expect_copy_ssh $src $sip $usr $psw $dst $pot
+            read w
+            expect_copy_ssh $src $sip $usr $psw$w $dst $pot
+        fi
+    else
+        echo expect_ssh $usr $sip $psw $pot
+        read w
+        expect_ssh $usr $sip $psw$w $pot
+    fi
+}
+
+
+################################################################################
+# main
+################################################################################
+    while getopts "hcli:f:d:" arg
+    do
+        case $arg in
+            h)
+                help
+                exit
+                ;;
+            l)
+                log=yes
+                ;;
+            c)
+                if [ -f ~/.conrc ]; then
+                    cat ~/.conrc | awk '{print "   "NR")", "\t"$1"\t"$2"\t"$3"\t"$4"\t"$5"\t"$6}'
+                else
+                    echo "there is no conrc"
+                fi
+                exit
+                ;;
+            i)
+                idx=$OPTARG
+                ;;
+            f)
+                src=$OPTARG
+                ;;
+            d)
+                dst=$OPTARG
+                ;;
+        esac
+    done
+
+    # make sure $1 is index now
+    shift $((OPTIND-1))
+
+    if [ $# = 1 ]; then
+        expr $1 + 0 > /dev/null 2>&1
+        if [ $? = 0 ]; then
+            # $1 is a number
+            log=yes
+            idx=$1
+            cfg=`cat $conrc $rc | head -n$idx | tail -n1`
+            nam=`echo $cfg | awk '{print $1}'`
+            sip=`echo $cfg | awk '{print $2}'`
+            usr=`echo $cfg | awk '{print $3}'`
+            psw=`echo $cfg | awk '{print $4}'`
+            pot=`echo $cfg | awk '{print $5}'`
+            copy_and_login 
+        else
+            echo "invalid options"
+        fi
+    else
+        if [ -z "$idx" ]; then
+            choose
+        else
+            cfg=`cat $conrc $rc | head -n$idx | tail -n1`
+            nam=`echo $cfg | awk '{print $1}'`
+            sip=`echo $cfg | awk '{print $2}'`
+            usr=`echo $cfg | awk '{print $3}'`
+            psw=`echo $cfg | awk '{print $4}'`
+            pot=`echo $cfg | awk '{print $5}'`
+        fi
+
+        # login
+        copy_and_login 
+    fi
+
+    exit
+

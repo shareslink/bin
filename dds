@@ -1,0 +1,14 @@
+#!/bin/bash
+# this shell is ued to delete all DS_Store files under current directory
+d=`date +%Y%m%d%H%M%S`
+mkdir -p ~/tmp/dds_$d
+log=~/tmp/dds_$d/dds.log
+echo '================================================================================' >> $log
+date >> $log
+echo `pwd` >> $log
+echo '================================================================================' >> $log
+find . -name .DS_Store | while read line; do 
+    name="${line//\//_}"
+    echo mv \"$line\" ~/tmp/dds_$d/\"$name\" | tee -a $log; 
+         mv  "$line"   ~/tmp/dds_$d/"$name"; 
+done;

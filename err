@@ -1,0 +1,4 @@
+#!/bin/sh
+if [ $# = 0 ]; then exit; fi;
+echo "\033[31m$@\033[0m"
+

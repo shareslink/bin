@@ -1,0 +1,2 @@
+#!/bin/sh
+cd ~/ins; find . -name zkServer.sh | grep bin | while read cmd; do d=`dirname $cmd`; cd $d; ~/ins/$cmd restart; cd ~/ins/;  done;

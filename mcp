@@ -1,0 +1,32 @@
+#!/bin/bash
+if [ $# == 0 ]; then
+	echo "$0 <src.list> <dst.dir>"
+	exit
+fi
+
+list=$1
+dest=$2
+
+if [ "$list" == "" ]; then
+	exit
+fi
+
+if [ "$dest" == "" ]; then
+	exit
+fi
+
+if [ ! -e "$dest" ]; then
+    echo "$dest is not exiting"
+    exit
+fi
+
+cat $list | while read i
+do
+    if [ -f "$i" ]; then
+        cp "$i" "$dest/"
+        echo "mcp status: $?    cp \"$i\" $dest/"
+    else
+        err "mcp status: 1    ignore directory \"$i\""
+    fi
+done
+

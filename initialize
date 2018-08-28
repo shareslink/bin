@@ -1,0 +1,30 @@
+#!/bin/bash
+# before run this shell, u need to update ubuntu and install git-core
+if [ -d ../ini ]; then
+    sodu mv /etc/apt/sources.list /etc/apt/sources.list.ori
+    sudo cp ../ini/sources.list /etc/apt/sources.list
+    sudo apt-get update
+fi
+
+sudo apt-get install vim xfonts-terminus terminator cscope ctags axel
+mysql-server maven3
+
+git config --global user.email "JohnsonElizee@163.com"
+git config --global user.name "JohnsonElizee"
+git config --global push.default matching
+git config --global color.status auto
+git config --global color.diff auto
+git config --global color.branch auto
+git config --global color.interactive auto
+#git config --global core.autocrlf true
+
+cd
+mv .bashrc .bashrc.ori
+mv .vim .vim.ori
+mv .vimrc .vimrc.ori
+ln -s ini/bashrc .bashrc
+ln -s ini/vim .vim
+ln -s ini/vimrc .vimrc
+touch .bash
+
+

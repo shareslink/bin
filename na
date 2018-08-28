@@ -1,0 +1,50 @@
+#!/bin/bash
+if [ $# = 0 ]; then
+    echo "Usage: na key java|c|cpp|xml|mk|txt"
+    echo "  na is used to find target file with keyword given"
+    echo "  locate cmd is used for this cmd"
+    echo "  na is diff to n, n uses find cmd for its searching work"
+    exit
+fi
+
+# this shell is used to locate any files under current directory.
+# it depends on locate cmd.
+# sudo updatedb to update index database for whole linux system.
+
+# $1: key
+# $2: file suffix
+# $3: file suffix
+# ...
+# $n: file suffix
+
+cwd=`pwd`
+pos=`expr ${#cwd} + 2`
+key="$1"
+
+# color on/off? use co cmd to set it on/off.
+co=
+if [ -e ~/.co ]; then
+    co="--color=always"
+else
+    co="--color=auto"
+fi
+
+# to speedup the searching, we process three kind of input with hard code.
+if [ $# = 1 ]; then
+    locate -ie "$key" | grep "$cwd" | cut -c "$pos"- | grep -i "$key" $co
+elif [ $# = 2 ]; then
+    locate -ie "$key" | grep "$cwd" | cut -c "$pos"- | grep "\.$2$" | grep -i "$key" $co
+else
+    # if suffix number is bigger than 1, we do it with loop here.
+    lines=`locate -ie "$key" | grep "$cwd" | cut -c "$pos"-`
+    shift
+
+    while [ $# -gt 0 ]; do
+        for line in $lines; do
+            echo $line | grep "\.$1$" | grep -i "$key" $co
+        done
+        echo
+        shift
+    done
+fi
+

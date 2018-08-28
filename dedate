@@ -1,0 +1,24 @@
+#!/bin/bash
+
+if [ $# = 0 ]; then
+    echo "decode time stamp to a date value"
+    echo "Usage:"
+    echo "     dedate 1333098712"
+    exit
+else
+    str=${1}
+    len=${#1}
+
+    if [ $len -lt 10 ]; then
+        echo "length of input is $len"
+        echo "invalid input, min length of input is 10"
+        exit 1
+    fi
+
+    if [ $len -gt 10 ]; then
+        str=${1:0:10}
+    fi
+
+    date -d "1970-01-01 UTC $str  seconds" +"%Y-%m-%d %T %z"
+fi
+

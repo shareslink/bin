@@ -1,0 +1,31 @@
+#!/bin/bash
+if [ "$#" -eq "0" ]; then
+    echo "Usage: n key java|c|cpp|xml|mk"
+    echo "  n is used to find the file with keyword given"
+    echo "  e.g."
+    echo "      n main c    this will find file with name main in all *.c files."
+    echo 
+    echo "  n is diff to na, na uses locate cmd for its searching work."
+    echo "  n uses find cmd instead."
+    exit
+fi
+
+if [ $# -eq 1 ]; then
+    find . | grep -v "\.git$" | grep -v "\.svn$" | grep "$1" --color=auto
+    exit
+fi
+
+
+args=("$@")
+declare -i i=1
+while [ "$i" -lt  "$#" ]; do
+    arg=${args[$i]}
+    if [ -f "${arg}" ]; then
+        grep "$1" $arg --color=auto
+    else
+        find . | grep "\.$arg$" | grep -v "\.git$" | grep -v "\.svn$" | grep "$1" --color=auto
+    fi
+
+    i=$i+1
+done
+
