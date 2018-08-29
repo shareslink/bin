@@ -11,7 +11,7 @@ expect {
     "(yes/no)?" { send "yes\n"; exp_continue }
     "password:" { send "$password\n"; exp_continue }
     "Welcome"   {
-        send "alias c='pwd && ls -lh';alias c..='cd - && c';rm='rm -fr';alias e='clear';alias E='exit';\n"
+        send "alias c='pwd && ls -lh';alias c.='cd ..';alias c..='cd - && c';rm='rm -fr';alias e='clear';alias E='exit';\n"
         interact
     }
 }
