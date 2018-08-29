@@ -5,10 +5,10 @@ echo -n "Please enter salt for your key:"
 read slt
 
 if [ -f ~/.encrc ]; then
-    echo `cat ~/.encrc`$slt@$@ | shasum | rev | shasum
+    echo `cat ~/.encrc`$slt@$@ | sha1sum | rev | sha1sum
 else
     echo "$slt@$@"
-    echo "$slt@$@" | shasum | rev | shasum
+    echo "$slt@$@" | sha1sum | rev | sha1sum
 fi
 
 
