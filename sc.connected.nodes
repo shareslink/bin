@@ -1,0 +1,2 @@
+#!/bin/sh
+curl -d "state=CONNECTED&includeNodeInfo=true" "http://localhost:8888/shareschain?requestType=getNodes" | jq

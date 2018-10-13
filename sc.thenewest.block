@@ -1,0 +1,2 @@
+#!/bin/sh
+curl -d "" "http://localhost:8888/shareschain?requestType=getBlock" |jq
