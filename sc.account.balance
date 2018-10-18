@@ -1,0 +1,16 @@
+#!/bin/sh
+if [ $# = 0 ]; then
+    echo "$0 [account]"
+    echo "please input one of accounts, e.g.:"
+    echo
+    echo "dYGL63FgMnS2UYqhPMKn9BHyCPp\tspace muscle beyond real grown everywhere mumble glow ash replace nightmare howl"
+    echo "dYGNW7A8GMoHqcbkH4n3xmVjFy2\tcore reason make hug image sanctuary cigarette mirror rabbit proud clock visit"
+    echo "ANpDtQtDfWpQAre68Uv8CUcHas\tpiece bitter then wheel sting fur amaze fresh kick crowd mercy bee"
+    echo "dXMcSsGAVssu2mTVttb9ywMsEt8\ttruck stress lunch doubt turn spend true shoulder plate sneak them hide"
+    echo 
+    exit
+fi
+
+account=$1
+curl -d "account=$account&chain=1" "http://localhost:8888/shareschain?requestType=getBalances" | jq
+
