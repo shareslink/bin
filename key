@@ -4,11 +4,19 @@ echo "key without input: a5842680671fb2589191f1587c512b4678f18bcf"
 echo -n "Please enter salt for your key:"
 read slt
 
+haxi=
+
+if [ -z "`whereis sha1sum`" ]; then
+    haxi=shasum
+else
+    haxi=sha1sum
+fi
+
 if [ -f ~/.encrc ]; then
-    echo `cat ~/.encrc`$slt@$@ | sha1sum | rev | sha1sum
+    echo `cat ~/.encrc`$slt@$@ | $haxi | rev | $haxi
 else
     echo "$slt@$@"
-    echo "$slt@$@" | sha1sum | rev | sha1sum
+    echo "$slt@$@" | $haxi | rev | $haxi
 fi
 
 
